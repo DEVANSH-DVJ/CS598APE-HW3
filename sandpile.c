@@ -115,12 +115,15 @@ static void stabilize() {
   for (int i = 0; i < n; ++i)
     for (int j = lo[i]; j <= hi[i]; ++j)
       cells[(i + 1) * w + j + 1] = CELL(i, j);
-  // Topple counts of one row, columns -1 to n
-  unsigned char *restrict top = (unsigned char *)calloc(w, 1) + 1;
-  int changed = 0;
-  do {
-    changed = 0;
-    for (int i = 0; i < n; ++i) {
+  int changed = 1;
+  // A sweep is three steps, rows i % 3; rows 3 apart touch disjoint rows
+  for (int s = 0; s % 3 || changed; ++s) {
+    if (s % 3 == 0)
+      changed = 0;
+#pragma omp parallel for reduction(| : changed)
+    for (int i = s % 3; i < n; i += 3) {
+      // Topple counts of one row, columns -1 to n
+      unsigned char counts[w], *restrict top = counts + 1;
       unsigned char *restrict row = cells + (i + 1) * w + 1;
       unsigned char *restrict up = row - w;
       unsigned char *restrict down = row + w;
@@ -149,12 +152,11 @@ static void stabilize() {
       flush(down, out + w, a, b, i < n - 1 ? lo[i + 1] : n, i < n - 1 ? hi[i + 1] : n);
       changed |= any;
     }
-  } while (changed);
+  }
   // Copy the Pacman cells back
   for (int i = 0; i < n; ++i)
     for (int j = lo[i]; j <= hi[i]; ++j)
       CELL(i, j) = cells[(i + 1) * w + j + 1];
-  free(top - 1);
   free(cells);
 }
 
