@@ -94,29 +94,42 @@ static void find_ranges() {
   }
 }
 
+// Topples whole rows at once: each Pacman cell v topples v / 4 times
 static void stabilize() {
   // Locals, so grid stores cannot alias them
   int n = N, w = N + 2;
+  // Topple counts of one row, columns -1 to n
+  int *restrict top = (int *)calloc(w, sizeof(int)) + 1;
   int changed = 0;
   do {
     changed = 0;
     for (int i = 0; i < n; ++i) {
-      int *row = grid + (i + 1) * w + 1;
+      int *restrict row = grid + (i + 1) * w + 1;
+      int *restrict up = row - w;
+      int *restrict down = row + w;
       // Visit only the row's Pacman range
-      int end = hi[i];
-      for (int j = lo[i]; j <= end; ++j) {
-        if (row[j] < 4)
-          continue;
-        changed = 1; // topple it
-        row[j] -= 4;
-        // Grains off the grid land in the border
-        row[j - w]++;
-        row[j - 1]++;
-        row[j + w]++;
-        row[j + 1]++;
+      int a = lo[i], b = hi[i];
+      int any = 0;
+      for (int j = a; j <= b; ++j) {
+        top[j] = row[j] >> 2;
+        any |= top[j];
       }
+      // Cells beside the range never topple
+      top[a - 1] = 0;
+      top[b + 1] = 0;
+      // Pacman cells are never negative, so v - 4 (v / 4) is v & 3
+      for (int j = a; j <= b; ++j) {
+        row[j] = (row[j] & 3) + top[j - 1] + top[j + 1];
+        up[j] += top[j];
+        down[j] += top[j];
+      }
+      // Grains off the range or grid land in outside cells
+      row[a - 1] += top[a];
+      row[b + 1] += top[b];
+      changed |= any;
     }
   } while (changed);
+  free(top - 1);
 }
 
 void find_identity() {
