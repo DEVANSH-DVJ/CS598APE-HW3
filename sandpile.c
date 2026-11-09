@@ -19,8 +19,8 @@ static void die(const char *s) {
 }
 
 int N = 801;
-// One block with a one-cell border, row stride N + 2; cells wrap mod 2^16
-unsigned short *grid;
+// One block with a one-cell border, row stride N + 2
+int *grid;
 // Cell (i, j) inside the border
 #define CELL(i, j) grid[((i) + 1) * (N + 2) + (j) + 1]
 // Pacman column range of each row
@@ -94,22 +94,40 @@ static void find_ranges() {
   }
 }
 
+// Moves byte grains in a to b outside l to h to the int grid
+static void flush(unsigned char *c, int *s, int a, int b, int l, int h) {
+  for (int j = a; j <= MIN(b, l - 1); ++j) {
+    s[j] += c[j];
+    c[j] = 0;
+  }
+  for (int j = MAX(a, h + 1); j <= b; ++j) {
+    s[j] += c[j];
+    c[j] = 0;
+  }
+}
+
 // Topples whole rows at once: each Pacman cell v topples v / 4 times
 static void stabilize() {
   // Locals, so grid stores cannot alias them
   int n = N, w = N + 2;
+  // Byte copy of the Pacman cells, at most 11
+  unsigned char *cells = (unsigned char *)calloc((size_t)w * w, 1);
+  for (int i = 0; i < n; ++i)
+    for (int j = lo[i]; j <= hi[i]; ++j)
+      cells[(i + 1) * w + j + 1] = CELL(i, j);
   // Topple counts of one row, columns -1 to n
-  unsigned short *restrict top = (unsigned short *)calloc(w, sizeof(short)) + 1;
+  unsigned char *restrict top = (unsigned char *)calloc(w, 1) + 1;
   int changed = 0;
   do {
     changed = 0;
     for (int i = 0; i < n; ++i) {
-      unsigned short *restrict row = grid + (i + 1) * w + 1;
-      unsigned short *restrict up = row - w;
-      unsigned short *restrict down = row + w;
+      unsigned char *restrict row = cells + (i + 1) * w + 1;
+      unsigned char *restrict up = row - w;
+      unsigned char *restrict down = row + w;
+      int *out = grid + (i + 1) * w + 1;
       // Visit only the row's Pacman range
       int a = lo[i], b = hi[i];
-      unsigned short any = 0;
+      unsigned char any = 0;
       for (int j = a; j <= b; ++j) {
         top[j] = row[j] >> 2;
         any |= top[j];
@@ -123,13 +141,21 @@ static void stabilize() {
         up[j] += top[j];
         down[j] += top[j];
       }
-      // Grains off the range or grid land in outside cells
-      row[a - 1] += top[a];
-      row[b + 1] += top[b];
+      // Grains off the range or grid land in the int grid
+      out[a - 1] += top[a];
+      out[b + 1] += top[b];
+      // Border rows hold no Pacman cells, so every column moves to the int grid
+      flush(up, out - w, a, b, i > 0 ? lo[i - 1] : n, i > 0 ? hi[i - 1] : n);
+      flush(down, out + w, a, b, i < n - 1 ? lo[i + 1] : n, i < n - 1 ? hi[i + 1] : n);
       changed |= any;
     }
   } while (changed);
+  // Copy the Pacman cells back
+  for (int i = 0; i < n; ++i)
+    for (int j = lo[i]; j <= hi[i]; ++j)
+      CELL(i, j) = cells[(i + 1) * w + j + 1];
   free(top - 1);
+  free(cells);
 }
 
 void find_identity() {
@@ -156,13 +182,10 @@ int main(int argc, char **argv) {
   uintmax_t parsed = strtoumax(argv[1], &end, 10);
   if (errno || argv[1][0] < '0' || argv[1][0] > '9' || *end || !parsed || parsed > INT32_MAX)
     die("grid size must be a positive int");
-  // Outside cells end above -65533 up to here, so wrap is exact
-  if (parsed > 4001)
-    die("grid size must be at most 4001 for 16-bit cells");
   N = (int)parsed;
 
   // Border starts empty
-  grid = (unsigned short *)calloc((size_t)(N + 2) * (N + 2), sizeof(short));
+  grid = (int *)calloc((size_t)(N + 2) * (N + 2), sizeof(int));
   find_ranges();
 
   find_identity();
