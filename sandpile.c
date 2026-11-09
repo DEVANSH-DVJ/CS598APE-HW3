@@ -117,10 +117,15 @@ static void stabilize() {
       cells[(i + 1) * w + j + 1] = CELL(i, j);
   int changed = 1;
   // A sweep is three steps, rows i % 3; rows 3 apart touch disjoint rows
+#pragma omp parallel
   for (int s = 0; s % 3 || changed; ++s) {
-    if (s % 3 == 0)
+    // Every thread reads changed before the reset
+    if (s % 3 == 0) {
+#pragma omp barrier
+#pragma omp single
       changed = 0;
-#pragma omp parallel for reduction(| : changed)
+    }
+#pragma omp for reduction(| : changed)
     for (int i = s % 3; i < n; i += 3) {
       // Topple counts of one row, columns -1 to n
       unsigned char counts[w], *restrict top = counts + 1;
