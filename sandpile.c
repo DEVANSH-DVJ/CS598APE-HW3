@@ -19,8 +19,8 @@ static void die(const char *s) {
 }
 
 int N = 801;
-// One block with a one-cell border, row stride N + 2
-int *grid;
+// One block with a one-cell border, row stride N + 2; cells wrap mod 2^16
+unsigned short *grid;
 // Cell (i, j) inside the border
 #define CELL(i, j) grid[((i) + 1) * (N + 2) + (j) + 1]
 // Pacman column range of each row
@@ -99,17 +99,17 @@ static void stabilize() {
   // Locals, so grid stores cannot alias them
   int n = N, w = N + 2;
   // Topple counts of one row, columns -1 to n
-  int *restrict top = (int *)calloc(w, sizeof(int)) + 1;
+  unsigned short *restrict top = (unsigned short *)calloc(w, sizeof(short)) + 1;
   int changed = 0;
   do {
     changed = 0;
     for (int i = 0; i < n; ++i) {
-      int *restrict row = grid + (i + 1) * w + 1;
-      int *restrict up = row - w;
-      int *restrict down = row + w;
+      unsigned short *restrict row = grid + (i + 1) * w + 1;
+      unsigned short *restrict up = row - w;
+      unsigned short *restrict down = row + w;
       // Visit only the row's Pacman range
       int a = lo[i], b = hi[i];
-      int any = 0;
+      unsigned short any = 0;
       for (int j = a; j <= b; ++j) {
         top[j] = row[j] >> 2;
         any |= top[j];
@@ -156,10 +156,13 @@ int main(int argc, char **argv) {
   uintmax_t parsed = strtoumax(argv[1], &end, 10);
   if (errno || argv[1][0] < '0' || argv[1][0] > '9' || *end || !parsed || parsed > INT32_MAX)
     die("grid size must be a positive int");
+  // Outside cells end above -65533 up to here, so wrap is exact
+  if (parsed > 4001)
+    die("grid size must be at most 4001 for 16-bit cells");
   N = (int)parsed;
 
   // Border starts empty
-  grid = (int *)calloc((size_t)(N + 2) * (N + 2), sizeof(int));
+  grid = (unsigned short *)calloc((size_t)(N + 2) * (N + 2), sizeof(short));
   find_ranges();
 
   find_identity();
