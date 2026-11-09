@@ -1,0 +1,3 @@
+# Commits that test/run.sh knows by name, in the order the optimizations were applied.
+# name  commit
+base    15fe837445b8e32a15ac61fcfa388980b54d9173
