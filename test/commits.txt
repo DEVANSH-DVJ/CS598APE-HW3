@@ -1,3 +1,11 @@
 # Commits that test/run.sh knows by name, in the order the optimizations were applied.
 # name  commit
 base    15fe837445b8e32a15ac61fcfa388980b54d9173
+opt1    025019fb7e7f0168c5d92dd6dc10561ff2cdb82d
+opt2    8a189d719441634e9ceed306e41c9e942404cb64
+opt3    18638f5c9f6b6e713d79fc9f907d7fe5033443d8
+opt4    b697838e7271d7cbe85ffb6f30ca43c337c37f27
+opt5    7b8eb0ab58408a0018cebfc31c5b3502809aa82c
+opt6    234356c75bd51cdb213cbfe5edbee1721a2790eb
+opt7    da678b2f54f2883154e2973c6db68e698baa7df5
+opt8    a23393b904047e24fe453e199fc25b4b15aebc19
