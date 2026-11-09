@@ -110,6 +110,8 @@ static void flush(unsigned char *c, int *s, int a, int b, int l, int h) {
 static void stabilize() {
   // Locals, so grid stores cannot alias them
   int n = N, w = N + 2;
+  // Odd N mirrors row i to n - 1 - i, so topple rows 0 to n / 2
+  int rows = n % 2 ? n / 2 + 1 : n;
   // Byte copy of the Pacman cells, at most 11
   unsigned char *cells = (unsigned char *)calloc((size_t)w * w, 1);
   for (int i = 0; i < n; ++i)
@@ -126,7 +128,7 @@ static void stabilize() {
       changed = 0;
     }
 #pragma omp for reduction(| : changed)
-    for (int i = s % 3; i < n; i += 3) {
+    for (int i = s % 3; i < rows; i += 3) {
       // Topple counts of one row, columns -1 to n
       unsigned char counts[w], *restrict top = counts + 1;
       unsigned char *restrict row = cells + (i + 1) * w + 1;
@@ -149,6 +151,10 @@ static void stabilize() {
         up[j] += top[j];
         down[j] += top[j];
       }
+      // Row n / 2 - 1 and its mirror both feed row n / 2
+      if (rows < n && i == rows - 2)
+        for (int j = a; j <= b; ++j)
+          down[j] += top[j];
       // Grains off the range or grid land in the int grid
       out[a - 1] += top[a];
       out[b + 1] += top[b];
@@ -162,6 +168,9 @@ static void stabilize() {
   for (int i = 0; i < n; ++i)
     for (int j = lo[i]; j <= hi[i]; ++j)
       CELL(i, j) = cells[(i + 1) * w + j + 1];
+  // Rows past n / 2 copy their mirror, outside cells included
+  for (int i = rows; i < n; ++i)
+    memcpy(grid + (i + 1) * w, grid + (n - i) * w, w * sizeof(int));
   free(cells);
 }
 
