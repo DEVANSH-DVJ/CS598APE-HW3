@@ -78,8 +78,7 @@ static void stabilize() {
     changed = 0;
     for (int i = 0; i < N; ++i) {
       for (int j = 0; j <= MAX(i, N - 1 - i); ++j) {
-        if ((i - N / 2) * (i - N / 2) + (j - N / 2) * (j - N / 2) <=
-            (N / 2) * (N / 2)) {
+        if ((i - N / 2) * (i - N / 2) + (j - N / 2) * (j - N / 2) <= (N / 2) * (N / 2)) {
           if (grid[i][j] < 4)
             continue;
           changed = 1; // topple it
@@ -120,8 +119,7 @@ int main(int argc, char **argv) {
   }
   char *end;
   uintmax_t parsed = strtoumax(argv[1], &end, 10);
-  if (errno || argv[1][0] < '0' || argv[1][0] > '9' || *end || !parsed ||
-      parsed > INT32_MAX)
+  if (errno || argv[1][0] < '0' || argv[1][0] > '9' || *end || !parsed || parsed > INT32_MAX)
     die("grid size must be a positive int");
   N = (int)parsed;
 
