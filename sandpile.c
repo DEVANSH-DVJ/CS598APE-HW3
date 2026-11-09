@@ -20,6 +20,8 @@ static void die(const char *s) {
 
 int N = 801;
 int **grid;
+// Pacman column range of each row
+int *lo, *hi;
 
 // you can also use this function to debug print your sandpile
 static void render(char *filename) {
@@ -72,26 +74,43 @@ static void render(char *filename) {
   free(pixels);
 }
 
+// Pacman cells of a row form one interval: a disk row cut by the mouth
+static void find_ranges() {
+  lo = (int *)malloc(N * sizeof(int));
+  hi = (int *)malloc(N * sizeof(int));
+  for (int i = 0; i < N; ++i) {
+    // Empty range until a cell is found
+    lo[i] = N;
+    hi[i] = -1;
+    for (int j = 0; j <= MAX(i, N - 1 - i); ++j) {
+      if ((i - N / 2) * (i - N / 2) + (j - N / 2) * (j - N / 2) <= (N / 2) * (N / 2)) {
+        lo[i] = MIN(lo[i], j);
+        hi[i] = j;
+      }
+    }
+  }
+}
+
 static void stabilize() {
   int changed = 0;
   do {
     changed = 0;
     for (int i = 0; i < N; ++i) {
-      for (int j = 0; j <= MAX(i, N - 1 - i); ++j) {
-        if ((i - N / 2) * (i - N / 2) + (j - N / 2) * (j - N / 2) <= (N / 2) * (N / 2)) {
-          if (grid[i][j] < 4)
-            continue;
-          changed = 1; // topple it
-          grid[i][j] -= 4;
-          if (i > 0)
-            grid[i - 1][j]++;
-          if (j > 0)
-            grid[i][j - 1]++;
-          if (i < N - 1)
-            grid[i + 1][j]++;
-          if (j < N - 1)
-            grid[i][j + 1]++;
-        }
+      // Visit only the row's Pacman range
+      int end = hi[i];
+      for (int j = lo[i]; j <= end; ++j) {
+        if (grid[i][j] < 4)
+          continue;
+        changed = 1; // topple it
+        grid[i][j] -= 4;
+        if (i > 0)
+          grid[i - 1][j]++;
+        if (j > 0)
+          grid[i][j - 1]++;
+        if (i < N - 1)
+          grid[i + 1][j]++;
+        if (j < N - 1)
+          grid[i][j + 1]++;
       }
     }
   } while (changed);
@@ -127,6 +146,7 @@ int main(int argc, char **argv) {
   for (int i = 0; i < N; ++i) {
     grid[i] = (int *)malloc(N * sizeof(int));
   }
+  find_ranges();
 
   find_identity();
 
@@ -135,5 +155,7 @@ int main(int argc, char **argv) {
     free(grid[i]);
   }
   free(grid);
+  free(lo);
+  free(hi);
   return EXIT_SUCCESS;
 }
